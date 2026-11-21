@@ -3,6 +3,12 @@
 Веб-версия классического бинго (75 шаров, карточка 5×5) для игры компанией в реальном времени.
 Без зависимостей: сервер на стандартной библиотеке Python, фронтенд на чистом HTML/CSS/JS.
 
+## 🎱 Играть
+
+**https://bigalex95.github.io/bingo/** — постоянная ссылка, всегда ведёт на текущий сервер игры.
+
+Сервер сейчас: https://158-101-166-85.sslip.io (IP `158.101.166.85`).
+
 ## Запуск
 
 ```bash
@@ -66,6 +72,11 @@ ssh ubuntu@<IP> "sudo bash /tmp/bingo-deploy/setup-server.sh '<публичны�
 ```bash
 tar czf - server.py public | ssh bingo@<IP> 'tar xzf - -C /opt/bingo && sudo systemctl restart bingo'
 ```
+
+**Если сменился сервер или IP:** обновите секрет `DEPLOY_HOST`, переменную `APP_URL`
+(`gh variable set APP_URL --body https://<новый-ip-через-дефисы>.sslip.io`) и адрес в разделе «Играть».
+Push в `main` заново выложит игру и обновит переадресацию на GitHub Pages
+(`.github/workflows/pages.yml`).
 
 Перезапуск сбрасывает идущие игры (комнаты хранятся в памяти) — не деплойте посреди партии.
 Oracle может остановить бесплатный сервер при долгом простое: тогда Console → Instances → **Start**.
