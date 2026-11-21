@@ -75,8 +75,11 @@ tar czf - server.py public | ssh bingo@<IP> 'tar xzf - -C /opt/bingo && sudo sys
 
 **Если сменился сервер или IP:** обновите секрет `DEPLOY_HOST`, переменную `APP_URL`
 (`gh variable set APP_URL --body https://<новый-ip-через-дефисы>.sslip.io`) и адрес в разделе «Играть».
-Push в `main` заново выложит игру и обновит переадресацию на GitHub Pages
-(`.github/workflows/pages.yml`).
+Затем выложите игру и обновите переадресацию на GitHub Pages:
+`gh workflow run deploy.yml` и `gh workflow run pages.yml`.
+
+Push в `main` перезапускает сервер только при изменениях в игре (`server.py`, `public/`, `tests/`),
+правки README и прочего игру не трогают.
 
 Перезапуск сбрасывает идущие игры (комнаты хранятся в памяти) — не деплойте посреди партии.
 Oracle может остановить бесплатный сервер при долгом простое: тогда Console → Instances → **Start**.

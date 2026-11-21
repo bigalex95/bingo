@@ -1,9 +1,13 @@
 name: Test & Deploy
 
+# Деплой перезапускает сервер и сбрасывает идущие партии, поэтому запускаемся только при изменении игры.
+# Вручную (например, после смены сервера): gh workflow run deploy.yml
 on:
   push:
     branches: [main]
+    paths: [server.py, public/**, tests/**, .github/workflows/deploy.yml]
   pull_request:
+    paths: [server.py, public/**, tests/**, .github/workflows/deploy.yml]
   workflow_dispatch:
 
 permissions:
