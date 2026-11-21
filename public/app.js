@@ -296,6 +296,17 @@ function renderStatus() {
   $('#statusText').textContent = text;
 }
 
+// Введённое значение интервала; если поле пустое или мусор — оставляем текущий интервал
+function readInterval() {
+  const v = parseFloat(String($('#intervalInput').value).replace(',', '.'));
+  return Number.isFinite(v) ? v : state.interval;
+}
+
+// Сервер сам приводит значение к 1–60 сек. с шагом 0.5
+function setAutoInterval(sec) {
+  act('auto', { on: state.auto, interval: sec });
+}
+
 function renderHostControls() {
   const s = state;
   $('#hostControls').dataset.status = s.status;
@@ -310,12 +321,20 @@ function renderHostControls() {
     }
   }
   for (const chip of chips.children) chip.classList.toggle('active', chip.dataset.pattern === s.pattern);
+  $('#allowAutoMarkChk').checked = s.autoMarkAllowed;
 
-  const sel = $('#intervalSel');
-  if (!sel.options.length) {
-    for (const sec of s.intervals) sel.append(new Option(`каждые ${sec} с`, sec));
+  const intervalInput = $('#intervalInput');
+  if (document.activeElement !== intervalInput) intervalInput.value = String(s.interval);
+  const intervalChips = $('#intervalChips');
+  if (!intervalChips.children.length) {
+    for (const sec of s.intervals) {
+      const chip = el('button', 'chip', `${sec} с`);
+      chip.dataset.sec = sec;
+      chip.onclick = () => setAutoInterval(sec);
+      intervalChips.append(chip);
+    }
   }
-  if (document.activeElement !== sel) sel.value = String(s.interval);
+  for (const chip of intervalChips.children) chip.classList.toggle('active', Number(chip.dataset.sec) === s.interval);
 
   const autoBtn = $('#autoBtn');
   autoBtn.textContent = s.auto ? '⏸ Авто: вкл' : '⏵ Авто: выкл';
@@ -355,7 +374,11 @@ function renderCard() {
   // но кнопку гасим, чтобы она не провоцировала всех жать её зря
   bingo.disabled = state.status !== 'playing';
 
-  $('#autoMarkChk').checked = state.you.autoMark;
+  const autoMarkAllowed = state.autoMarkAllowed;
+  $('#autoMarkChk').checked = autoMarkAllowed && state.you.autoMark;
+  $('#autoMarkChk').disabled = !autoMarkAllowed;
+  $('#autoMarkSwitch').classList.toggle('disabled', !autoMarkAllowed);
+  $('#autoMarkOff').classList.toggle('hidden', autoMarkAllowed);
   $('#newCardBtn').classList.toggle('hidden', state.status !== 'lobby');
 }
 
@@ -656,8 +679,9 @@ function bindUi() {
 
   $('#startBtn').onclick = () => act('start');
   $('#drawBtn').onclick = () => act('draw');
-  $('#autoBtn').onclick = () => act('auto', { on: !state.auto, interval: Number($('#intervalSel').value) });
-  $('#intervalSel').onchange = (e) => act('auto', { on: state.auto, interval: Number(e.target.value) });
+  $('#autoBtn').onclick = () => act('auto', { on: !state.auto, interval: readInterval() });
+  $('#intervalInput').onchange = () => setAutoInterval(readInterval());
+  $('#intervalInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
   $('#stopRoundBtn').onclick = () => confirm('Прервать раунд? У всех будут новые карточки.') && act('new_round');
   $('#newRoundBtn').onclick = () => act('new_round');
   $('#overlayNewRound').onclick = () => act('new_round');
@@ -665,6 +689,7 @@ function bindUi() {
 
   $('#bingoBtn').onclick = claimBingo;
   $('#autoMarkChk').onchange = (e) => act('auto_mark', { on: e.target.checked });
+  $('#allowAutoMarkChk').onchange = (e) => act('allow_auto_mark', { on: e.target.checked });
   $('#newCardBtn').onclick = () => act('new_card');
 
   document.addEventListener('pointerdown', unlockAudio, { once: true });

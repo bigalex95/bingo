@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import random
 import secrets
@@ -38,7 +39,8 @@ PATTERNS = {
     "corners": "Четыре угла",
     "full": "Вся карточка",
 }
-AUTO_INTERVALS = [4, 6, 8, 12, 20]
+AUTO_INTERVALS = [1, 2, 4, 6, 8, 12, 20]  # быстрый выбор; можно задать любое значение в пределах ниже
+MIN_INTERVAL, MAX_INTERVAL = 1, 60  # сек.
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ"  # без I и O, чтобы не путать с 1 и 0
 CYR_TO_LAT = str.maketrans("АВСЕНКМОРТХУ", "ABCEHKMOPTXY")  # код набрали в русской раскладке
 HOST_TIMEOUT = 20  # сек. ведущий офлайн → права переходят к другому игроку
@@ -169,7 +171,8 @@ class Room:
         self.drawn: list[int] = []
         self.pool: list[int] = []
         self.auto = False
-        self.interval = 8
+        self.interval: float = 8
+        self.auto_mark_allowed = True  # ведущий может запретить автоотметку на раунд
         self.next_draw_at = 0.0
         self.winners: list[dict] = []
         self.win_at: int | None = None
@@ -234,7 +237,8 @@ class Room:
         self.next_draw_at = time.time() + 2
         for p in self.players.values():
             p.marks = {FREE}
-        self.add_log(f"Раунд {self.round} начался! Цель: {PATTERNS[self.pattern].lower()}", "start")
+        extra = "" if self.auto_mark_allowed else ". Автоотметка выключена"
+        self.add_log(f"Раунд {self.round} начался! Цель: {PATTERNS[self.pattern].lower()}{extra}", "start")
 
     def draw(self):
         if self.status != "playing":
@@ -245,7 +249,7 @@ class Room:
         n = self.pool.pop()
         self.drawn.append(n)
         for p in self.players.values():
-            if p.auto_mark and n in p.card:
+            if self.auto_mark_allowed and p.auto_mark and n in p.card:
                 p.marks.add(p.card.index(n))
         if not self.pool:
             self.auto = False
@@ -330,6 +334,7 @@ class Room:
             "drawn": self.drawn,
             "auto": self.auto,
             "interval": self.interval,
+            "autoMarkAllowed": self.auto_mark_allowed,
             "nextDrawIn": round(max(0.0, self.next_draw_at - time.time()), 2) if self.auto and playing else None,
             "hostId": self.host_id,
             "players": [
@@ -398,11 +403,20 @@ def act_pattern(room: Room, p: Player, body: dict):
     room.pattern = value
 
 
-def act_auto(room: Room, p: Player, body: dict):
-    interval = body.get("interval", room.interval)
-    if interval not in AUTO_INTERVALS:
+def parse_interval(value) -> float:
+    """Любое число секунд → шаг 0.5 в пределах [MIN_INTERVAL, MAX_INTERVAL]."""
+    try:
+        sec = float(value)
+    except (TypeError, ValueError):
+        raise GameError("Неверный интервал") from None
+    if not math.isfinite(sec):
         raise GameError("Неверный интервал")
-    room.interval = int(interval)
+    sec = min(MAX_INTERVAL, max(MIN_INTERVAL, round(sec * 2) / 2))
+    return int(sec) if sec.is_integer() else sec
+
+
+def act_auto(room: Room, p: Player, body: dict):
+    room.interval = parse_interval(body.get("interval", room.interval))
     on = bool(body.get("on"))
     if on and room.status != "playing":
         raise GameError("Автовытягивание работает только во время раунда")
@@ -436,8 +450,17 @@ def act_new_card(room: Room, p: Player, body: dict):
     p.new_card()
 
 
+def act_allow_auto_mark(room: Room, p: Player, body: dict):
+    if room.status != "lobby":
+        raise GameError("Автоотметку можно настроить только до начала раунда")
+    room.auto_mark_allowed = bool(body.get("on"))
+
+
 def act_auto_mark(room: Room, p: Player, body: dict):
-    p.auto_mark = bool(body.get("on"))
+    on = bool(body.get("on"))
+    if on and not room.auto_mark_allowed:
+        raise GameError("Ведущий выключил автоотметку в этом раунде")
+    p.auto_mark = on
     if p.auto_mark and room.status != "lobby":
         drawn = set(room.drawn)
         p.marks |= {i for i, n in enumerate(p.card) if n in drawn}
@@ -460,9 +483,10 @@ ACTIONS = {
     "claim": lambda room, p, body: {"valid": room.claim(p)},
     "new_card": act_new_card,
     "auto_mark": act_auto_mark,
+    "allow_auto_mark": act_allow_auto_mark,
     "leave": act_leave,
 }
-HOST_ACTIONS = {"pattern", "start", "draw", "auto", "new_round", "kick", "make_host"}
+HOST_ACTIONS = {"pattern", "allow_auto_mark", "start", "draw", "auto", "new_round", "kick", "make_host"}
 
 
 def api_action(body: dict) -> dict:

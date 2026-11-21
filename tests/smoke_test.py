@@ -2,6 +2,7 @@
 import json
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 
@@ -62,6 +63,14 @@ check(s == 200, "start")
 s, r = act(room, host, "pattern", value="full")
 check(s == 400, f"pattern locked while playing: {r.get('error')}")
 
+# свой интервал автовытягивания: шаг 0.5 в пределах 1–60 сек.
+for sent, want in [(2, 2), (1.5, 1.5), (0.2, 1), (2.74, 2.5), (999, 60), ("3", 3)]:
+    s, r = act(room, host, "auto", on=False, interval=sent)
+    got_iv = snapshot(room, host["token"])["interval"]
+    check(s == 200 and got_iv == want, f"interval {sent!r} -> {got_iv}")
+s, r = act(room, host, "auto", on=False, interval="abc")
+check(s == 400, f"bad interval rejected: {r.get('error')}")
+
 act(room, p1, "auto_mark", on=True)
 s, r = act(room, p2, "claim")
 check(s == 200 and r["valid"] is False, "false claim detected")
@@ -103,6 +112,26 @@ check(st1["status"] == "lobby" and st1["round"] == 2 and st1["you"]["card"] != o
 s, r = act(room, p1, "new_card")
 check(s == 200, "new card in lobby")
 
+# ведущий выключает автоотметку на раунд
+s, r = act(room, p1, "allow_auto_mark", on=False)
+check(s == 403, "non-host cannot change auto-mark setting")
+s, r = act(room, host, "allow_auto_mark", on=False)
+check(s == 200 and snapshot(room, host["token"])["autoMarkAllowed"] is False, "host disables auto-mark")
+s, r = act(room, p2, "auto_mark", on=True)
+check(s == 400, f"auto-mark rejected when disabled: {r.get('error')}")
+act(room, host, "start")
+s, r = act(room, host, "allow_auto_mark", on=True)
+check(s == 400, f"auto-mark setting locked while playing: {r.get('error')}")
+act(room, host, "auto", on=True, interval=1)
+time.sleep(3.3)  # первый шар через 1.5 с, дальше каждую секунду
+act(room, host, "auto", on=False)
+st1 = snapshot(room, p1["token"])
+check(len(st1["drawn"]) >= 2, f"auto-draw every 1 s ({len(st1['drawn'])} balls in 3.3 s)")
+check(st1["you"]["marks"] == [12], "no auto-marks when disabled (p1 still has it on)")
+act(room, host, "new_round")
+s, r = act(room, host, "allow_auto_mark", on=True)
+check(s == 200 and snapshot(room, p1["token"])["you"]["autoMark"] is True, "re-enabled, player preference kept")
+
 # kick p2 — его SSE должен получить kicked
 got = {}
 def listen():
@@ -115,7 +144,7 @@ def listen():
                     got["kicked"] = True
 t = threading.Thread(target=listen)
 t.start()
-import time; time.sleep(0.5)
+time.sleep(0.5)
 s, r = act(room, host, "kick", target=p2["id"])
 t.join(3)
 check(got.get("kicked") is True, "kicked player notified")

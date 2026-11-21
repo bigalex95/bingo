@@ -62,14 +62,19 @@
         <div class="hc hc-lobby">
           <div class="hc-label">Цель раунда</div>
           <div id="patternChips" class="chips"></div>
+          <label class="switch" title="Если выключить, все отмечают числа вручную"><input id="allowAutoMarkChk" type="checkbox"><span></span>Автоотметка у игроков</label>
           <button id="startBtn" class="btn primary wide">▶ Начать раунд</button>
         </div>
         <div class="hc hc-playing">
           <button id="drawBtn" class="btn primary wide">🎱 Вытянуть шар <kbd>Пробел</kbd></button>
           <div class="auto-row">
             <button id="autoBtn" class="btn toggle"></button>
-            <select id="intervalSel" title="Интервал автовытягивания"></select>
+            <label class="interval-field" title="Интервал автовытягивания (1–60 сек)">
+              <input id="intervalInput" type="number" min="1" max="60" step="0.5" inputmode="decimal">
+              <span>сек</span>
+            </label>
           </div>
+          <div id="intervalChips" class="chips small"></div>
           <button id="stopRoundBtn" class="btn small ghost">⏹ Прервать раунд</button>
         </div>
         <div class="hc hc-finished">
@@ -82,7 +87,7 @@
       <div id="card" class="card"></div>
       <button id="bingoBtn" class="btn bingo">БИНГО!</button>
       <div class="card-options">
-        <label class="switch"><input id="autoMarkChk" type="checkbox"><span></span>Автоотметка</label>
+        <label id="autoMarkSwitch" class="switch"><input id="autoMarkChk" type="checkbox"><span></span>Автоотметка<small id="autoMarkOff" class="hidden">(выключена ведущим)</small></label>
         <button id="newCardBtn" class="btn small ghost">🔄 Другая карточка</button>
       </div>
     </section>
