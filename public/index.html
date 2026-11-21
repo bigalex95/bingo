@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Бинго</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23ff3d7f'/><circle cx='50' cy='50' r='26' fill='white'/><text x='50' y='60' font-size='28' font-family='Arial' font-weight='900' text-anchor='middle'>B</text></svg>">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ===== Главный экран ===== -->
+<div id="home" class="screen home">
+  <div class="home-card panel">
+    <h1 class="logo"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></h1>
+    <p class="tagline">Мультиплеерное бинго для вашей компании</p>
+
+    <label class="field">Ваше имя
+      <input id="nameInput" type="text" maxlength="24" placeholder="Например, Аня" autocomplete="nickname">
+    </label>
+
+    <div id="inviteNote" class="invite hidden"></div>
+    <button id="resumeBtn" class="btn wide resume hidden"></button>
+
+    <button id="createBtn" class="btn primary wide">Создать комнату</button>
+    <div class="or">или войти по коду</div>
+    <div class="join-row">
+      <input id="codeInput" type="text" maxlength="4" placeholder="КОД" autocomplete="off" spellcheck="false">
+      <button id="joinBtn" class="btn">Войти</button>
+    </div>
+
+    <p class="rules">Ведущий вытягивает шары, каждый отмечает выпавшие числа на своей карточке.
+      Собрали цель раунда — жмите «БИНГО!» первым.</p>
+  </div>
+</div>
+
+<!-- ===== Игра ===== -->
+<div id="game" class="screen hidden">
+  <header class="topbar">
+    <div class="logo small"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+    <div class="room-info">
+      <span class="muted">Комната</span>
+      <b id="roomCode" class="room-code"></b>
+      <button id="copyLinkBtn" class="btn small">🔗 Пригласить</button>
+    </div>
+    <span id="roundBadge" class="badge"></span>
+    <span id="patternBadge" class="badge accent"></span>
+    <span class="spacer"></span>
+    <span id="conn" class="conn"></span>
+    <button id="soundBtn" class="btn small icon" title="Звук и озвучка"></button>
+    <button id="leaveBtn" class="btn small ghost">Выйти</button>
+  </header>
+
+  <main class="layout">
+    <section class="panel caller">
+      <div id="currentBall" class="ball big empty"><div class="inner"><span class="letter"></span><span class="num">?</span></div></div>
+      <div id="countdown" class="countdown"><div id="countdownBar"></div></div>
+      <div id="recentBalls" class="recent"></div>
+      <p id="statusText" class="status-text"></p>
+
+      <div id="hostControls" class="host-controls">
+        <div class="hc hc-lobby">
+          <div class="hc-label">Цель раунда</div>
+          <div id="patternChips" class="chips"></div>
+          <button id="startBtn" class="btn primary wide">▶ Начать раунд</button>
+        </div>
+        <div class="hc hc-playing">
+          <button id="drawBtn" class="btn primary wide">🎱 Вытянуть шар <kbd>Пробел</kbd></button>
+          <div class="auto-row">
+            <button id="autoBtn" class="btn toggle"></button>
+            <select id="intervalSel" title="Интервал автовытягивания"></select>
+          </div>
+          <button id="stopRoundBtn" class="btn small ghost">⏹ Прервать раунд</button>
+        </div>
+        <div class="hc hc-finished">
+          <button id="newRoundBtn" class="btn primary wide">🔁 Новый раунд</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel card-panel">
+      <div id="card" class="card"></div>
+      <button id="bingoBtn" class="btn bingo">БИНГО!</button>
+      <div class="card-options">
+        <label class="switch"><input id="autoMarkChk" type="checkbox"><span></span>Автоотметка</label>
+        <button id="newCardBtn" class="btn small ghost">🔄 Другая карточка</button>
+      </div>
+    </section>
+
+    <aside class="panel side">
+      <h3>Игроки <span id="playerCount" class="muted"></span></h3>
+      <ul id="players" class="players"></ul>
+      <h3>События</h3>
+      <ul id="log" class="log"></ul>
+    </aside>
+
+    <section class="panel board-panel">
+      <h3>Вытянутые шары <span id="drawnCount" class="muted"></span></h3>
+      <div id="board" class="board"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== Победа ===== -->
+<div id="winnerOverlay" class="overlay hidden">
+  <div class="modal">
+    <div class="modal-title">БИНГО!</div>
+    <div id="winnerNames" class="winner-names"></div>
+    <div id="winnerYou" class="winner-you hidden">Это вы! 🎉</div>
+    <div id="winnerCard" class="mini-card"></div>
+    <div class="modal-actions">
+      <button id="overlayNewRound" class="btn primary host-only">🔁 Новый раунд</button>
+      <button id="overlayClose" class="btn ghost">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts"></div>
+<canvas id="confetti" class="confetti"></canvas>
+
+<script src="/app.js"></script>
+</body>
+</html>

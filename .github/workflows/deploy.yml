@@ -1,0 +1,70 @@
+name: Test & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Start server
+        run: |
+          python3 server.py > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/healthz && exit 0
+            sleep 0.5
+          done
+          cat server.log
+          exit 1
+
+      - name: Smoke test
+        run: python3 tests/smoke_test.py http://127.0.0.1:8000
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Upload files
+        run: |
+          rsync -az --delete -e "ssh -i $HOME/.ssh/deploy_key -o BatchMode=yes" \
+            server.py public "bingo@${DEPLOY_HOST}:/opt/bingo/"
+
+      - name: Restart service
+        run: ssh -i "$HOME/.ssh/deploy_key" -o BatchMode=yes "bingo@${DEPLOY_HOST}" 'sudo -n systemctl restart bingo'
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 20); do
+            curl -fsS "${APP_URL}/healthz" && exit 0
+            sleep 3
+          done
+          echo "Сервер не ответил по ${APP_URL}"
+          exit 1

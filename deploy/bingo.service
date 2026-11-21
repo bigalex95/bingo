@@ -1,0 +1,28 @@
+[Unit]
+Description=Bingo multiplayer server
+After=network.target
+
+[Service]
+User=bingo
+Group=bingo
+WorkingDirectory=/opt/bingo
+Environment=HOST=127.0.0.1
+Environment=PORT=8000
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /opt/bingo/server.py
+Restart=always
+RestartSec=2
+
+# Ограничения: сервису нужны только чтение своих файлов и сеть
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadOnlyPaths=/opt/bingo
+
+[Install]
+WantedBy=multi-user.target
